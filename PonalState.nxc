@@ -1,0 +1,274 @@
+
+#define LEFT_SENSOR IN_4
+#define RIGHT_SENSOR IN_2
+#define MIDDLE_SENSOR IN_3
+
+#define LEFT_MOTOR OUT_C
+#define RIGHT_MOTOR OUT_A
+#define AUX_MOTOR OUT_B
+
+#define THRESHOLD_LEFT 500
+#define THRESHOLD_MIDDLE 500
+#define THRESHOLD_RIGHT 560
+
+#define FULL_SPEED 100
+#define MID_SPEED 60
+#define LOW_SPEED 30
+#define STOP_SPEED 0
+
+enum State
+{
+ 	   None = 0,
+     Initial = 1,
+     Both_Full_Speed = 2,
+     Both_Slow_Speed = 3,
+     Full_Speed_Ri_Mid_Speed_Le = 4,
+     Mid_Speed_Ri_Full_Speed_Le = 5,
+     Mid_Speed_Ri_Low_Speed_Le = 6,
+     Low_Speed_Ri_Mid_Speed_Le = 7
+};
+
+// true falls sensor Schwarz
+bool checkThreshold( const int value, const int threshold )
+{
+	return value > threshold;
+}
+
+State St_Initial( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+{
+
+	if(checkThreshold(vMiddle, THRESHOLD_MIDDLE)) 
+	{
+		return Both_Full_Speed;
+	}
+	else
+	{
+		return Both_Slow_Speed;
+	}
+
+}
+
+State St_Both_Full_Speed( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+{
+	if( !checkThreshold(vMiddle, THRESHOLD_MIDDLE) ) //MITTE WEISS
+	{
+		return Both_Slow_Speed;
+	}
+
+	if( checkThreshold(vLeft, THRESHOLD_LEFT) )  //LINKS SCHWARZ
+	{
+		return Full_Speed_Ri_Mid_Speed_Le;
+	}
+	
+	if( checkThreshold(vRight, THRESHOLD_RIGHT) ) //RECHTS SCHWARZ
+	{
+		return Mid_Speed_Ri_Full_Speed_Le;
+	}
+
+	// nur mitte schwarz
+
+	if( initial ) 
+	{
+		OnFwd(LEFT_MOTOR, FULL_SPEED);
+		OnFwd(RIGHT_MOTOR, FULL_SPEED);
+	} 
+
+	return Both_Full_Speed;
+}
+
+State St_Both_Slow_Speed( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+{
+	if( checkThreshold(vMiddle, THRESHOLD_MIDDLE) ) //MITTE Schwarz
+	{
+		return Both_Full_Speed;
+	}
+
+	if( checkThreshold(vLeft, THRESHOLD_LEFT) )  //LINKS SCHWARZ
+	{
+		return Mid_Speed_Ri_Low_Speed_Le;
+	}
+	
+	if( checkThreshold(vRight, THRESHOLD_RIGHT) ) //RECHTS SCHWARZ
+	{
+		return Low_Speed_Ri_Mid_Speed_Le;
+	}
+
+	if( initial ) 
+	{
+		OnFwd(LEFT_MOTOR, MID_SPEED);
+		OnFwd(RIGHT_MOTOR, MID_SPEED);
+	} 
+
+	return Both_Slow_Speed;
+}
+
+State St_Full_Speed_Ri_Mid_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+{
+	if( !checkThreshold(vMiddle, THRESHOLD_MIDDLE) || checkThreshold(vRight, THRESHOLD_RIGHT) ) //MITTE WEISS oder rechts schwarz
+	{
+		return Initial;
+	}
+
+	if( !checkThreshold(vLeft, THRESHOLD_LEFT) )  //LINKS SCHWARZ
+	{
+		return Both_Full_Speed;
+	}
+	
+	if( initial ) 
+	{
+		OnFwd(RIGHT_MOTOR, FULL_SPEED);
+		OnFwd(LEFT_MOTOR, MID_SPEED);
+	} 
+
+	return Full_Speed_Ri_Mid_Speed_Le;
+}
+
+State St_Mid_Speed_Ri_Full_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+{
+	if( !checkThreshold(vMiddle, THRESHOLD_MIDDLE) || checkThreshold(vLeft, THRESHOLD_LEFT) ) //MITTE WEISS oder links schwarz
+	{
+		return Initial;
+	}
+
+	if( !checkThreshold(vRight, THRESHOLD_RIGHT) )  //RECHTS SCHWARZ
+	{
+		return Both_Full_Speed;
+	}
+	
+	if( initial ) 
+	{
+		OnFwd(RIGHT_MOTOR, MID_SPEED);
+		OnFwd(LEFT_MOTOR, FULL_SPEED);
+	} 
+
+	return Mid_Speed_Ri_Full_Speed_Le;
+
+}
+
+State St_Mid_Speed_Ri_Low_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+{
+	if( checkThreshold(vMiddle, THRESHOLD_MIDDLE)  ) //MITTE WEISS oder rechts schwarz
+	{
+		return Both_Full_Speed;
+	}
+	
+	if( initial ) 
+	{
+		OnFwd(RIGHT_MOTOR, MID_SPEED);
+		OnFwd(LEFT_MOTOR, LOW_SPEED);
+	} 
+
+	return Mid_Speed_Ri_Low_Speed_Le;
+}
+
+State St_Low_Speed_Ri_Mid_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+{
+	if( checkThreshold(vMiddle, THRESHOLD_MIDDLE)  ) //MITTE WEISS oder rechts schwarz
+	{
+		return Both_Full_Speed;
+	}
+	
+	if( initial ) 
+	{
+		OnFwd(RIGHT_MOTOR, LOW_SPEED);
+		OnFwd(LEFT_MOTOR, MID_SPEED);
+	} 
+
+	return Low_Speed_Ri_Mid_Speed_Le;
+}
+
+
+State StateDispatch(const int vLeft, const int vRight, const int vMiddle, const State currentState, const State lastState)
+{
+
+	const bool initial = lastState != currentState;
+
+	switch(currentState)
+	{
+
+		case Initial:
+			return St_Initial(vLeft, vMiddle, vRight, initial);
+
+	    case Both_Full_Speed:
+			return St_Both_Full_Speed(vLeft, vMiddle, vRight, initial);
+
+	    case Both_Slow_Speed:
+			return St_Both_Slow_Speed(vLeft, vMiddle, vRight, initial);
+
+	    case Full_Speed_Ri_Mid_Speed_Le:
+			return St_Full_Speed_Ri_Mid_Speed_Le(vLeft, vMiddle, vRight, initial);
+
+	    case Mid_Speed_Ri_Full_Speed_Le:
+			return St_Mid_Speed_Ri_Full_Speed_Le(vLeft, vMiddle, vRight, initial);
+
+	    case Mid_Speed_Ri_Low_Speed_Le:
+			return St_Mid_Speed_Ri_Low_Speed_Le(vLeft, vMiddle, vRight, initial);
+
+	    case Low_Speed_Ri_Mid_Speed_Le:
+			return St_Low_Speed_Ri_Mid_Speed_Le(vLeft, vMiddle, vRight, initial);
+
+	}
+	 
+
+
+	return currentState;
+
+}
+
+sub StateMachine(State initialState)
+{
+
+	State currentState = initialState;
+	State lastState = None;
+
+  string strTmp;
+
+	while(true)
+	{
+
+		const int vLeft = SensorRaw(LEFT_SENSOR);
+		const int vRight = SensorRaw(RIGHT_SENSOR);
+		const int vMiddle = SensorRaw(MIDDLE_SENSOR);
+
+    strTmp = NumToStr(vLeft) + " " + NumToStr(vMiddle) + " " + NumToStr(vRight);
+    TextOut(0, LCD_LINE1, strTmp);
+    
+    strTmp = NumToStr(currentState);
+    TextOut(0, LCD_LINE3, strTmp);
+
+		State newState = StateDispatch( vLeft, vRight, vMiddle, currentState, lastState );
+
+		lastState = currentState;
+		currentState = newState;
+
+    if(currentState != lastState)
+    {
+     while( UIButton() != UI_BUTTON_ENTER ) { }
+    }
+
+	}
+
+  return;
+}
+
+sub Setup()
+{
+
+	SetSensorType(LEFT_SENSOR, IN_TYPE_LIGHT_ACTIVE);
+	SetSensorMode(LEFT_SENSOR, IN_MODE_RAW);
+	SetSensorType(RIGHT_SENSOR, IN_TYPE_LIGHT_ACTIVE);
+	SetSensorMode(RIGHT_SENSOR, IN_MODE_RAW);
+	SetSensorType(MIDDLE_SENSOR, IN_TYPE_LIGHT_ACTIVE);
+	SetSensorMode(MIDDLE_SENSOR, IN_MODE_RAW);
+
+	return;
+}
+
+task main()
+{
+	Setup();
+
+	StateMachine(Initial);
+}
+
+

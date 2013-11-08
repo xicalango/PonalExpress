@@ -8,14 +8,6 @@
 #define AUX_MOTOR OUT_B
 
 
-sub xxWait(int time)
-{
-	int t = CurrentTick() + 100;
-
-	while(t > CurrentTick()) { }
-}
-
-
 sub Setup()
 {
 
