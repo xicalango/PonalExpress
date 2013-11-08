@@ -22,7 +22,7 @@
 #define THRESHOLD_SONIC 15
 
 #define FULL_SPEED 100
-#define MID_SPEED 30
+#define MID_SPEED 50
 
 #define OBSTACLE_SPEED_L 50
 #define OBSTACLE_SPEED_R 70
@@ -39,6 +39,8 @@ enum State
      Low_Speed_Ri_Mid_Speed_Le = 7,
      Obstacle_Avoidance = 8
 };
+
+int Tones[] = { 0, 261, 311, 329, 349, 369, 391, 466, 523 };
 
 // true falls sensor Schwarz
 bool checkThreshold( const int value, const int threshold )
@@ -335,7 +337,7 @@ sub StateMachine(State initialState)
 		
 		
 		
-		//PlayTone( 440 + (currentState * 4400) / 70, 100 );
+		PlayTone( Tones[currentState] * 2, 50 );
 
 
 
