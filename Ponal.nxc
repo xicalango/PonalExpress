@@ -28,7 +28,7 @@ sub FollowLine()
 //	const int thresholdLeft = 650;
 //	const int thresholdMiddle = 661;
 //	const int thresholdRight = 641;
-	const int thresholdLeft = 520;
+	const int thresholdLeft = 500;
 	const int thresholdMiddle = 550;
 	const int thresholdRight = 540;
 

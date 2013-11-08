@@ -3,18 +3,29 @@
 #define RIGHT_SENSOR IN_2
 #define MIDDLE_SENSOR IN_3
 
+#define SONIC_SENSOR IN_1
+
 #define LEFT_MOTOR OUT_C
 #define RIGHT_MOTOR OUT_A
 #define AUX_MOTOR OUT_B
 
+/*
 #define THRESHOLD_LEFT 500
 #define THRESHOLD_MIDDLE 500
 #define THRESHOLD_RIGHT 560
+*/
+
+#define THRESHOLD_LEFT 580
+#define THRESHOLD_MIDDLE 590
+#define THRESHOLD_RIGHT 630
+
+#define THRESHOLD_SONIC 15
 
 #define FULL_SPEED 100
-#define MID_SPEED 60
-#define LOW_SPEED 30
-#define STOP_SPEED 0
+#define MID_SPEED 30
+
+#define OBSTACLE_SPEED_L 50
+#define OBSTACLE_SPEED_R 70
 
 enum State
 {
@@ -25,7 +36,8 @@ enum State
      Full_Speed_Ri_Mid_Speed_Le = 4,
      Mid_Speed_Ri_Full_Speed_Le = 5,
      Mid_Speed_Ri_Low_Speed_Le = 6,
-     Low_Speed_Ri_Mid_Speed_Le = 7
+     Low_Speed_Ri_Mid_Speed_Le = 7,
+     Obstacle_Avoidance = 8
 };
 
 // true falls sensor Schwarz
@@ -34,7 +46,12 @@ bool checkThreshold( const int value, const int threshold )
 	return value > threshold;
 }
 
-State St_Initial( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+bool checkObstacle( const int value )
+{
+  return value < THRESHOLD_SONIC;
+}
+
+State St_Initial( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
 
 	if(checkThreshold(vMiddle, THRESHOLD_MIDDLE)) 
@@ -48,8 +65,14 @@ State St_Initial( const int vLeft, const int vMiddle, const int vRight, const bo
 
 }
 
-State St_Both_Full_Speed( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+State St_Both_Full_Speed( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
+
+  if( checkObstacle(vSonic) )
+  {
+    return Obstacle_Avoidance;
+  }
+
 	if( !checkThreshold(vMiddle, THRESHOLD_MIDDLE) ) //MITTE WEISS
 	{
 		return Both_Slow_Speed;
@@ -76,8 +99,13 @@ State St_Both_Full_Speed( const int vLeft, const int vMiddle, const int vRight, 
 	return Both_Full_Speed;
 }
 
-State St_Both_Slow_Speed( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+State St_Both_Slow_Speed( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
+  if( checkObstacle(vSonic) )
+  {
+    return Obstacle_Avoidance;
+  }
+
 	if( checkThreshold(vMiddle, THRESHOLD_MIDDLE) ) //MITTE Schwarz
 	{
 		return Both_Full_Speed;
@@ -95,15 +123,21 @@ State St_Both_Slow_Speed( const int vLeft, const int vMiddle, const int vRight, 
 
 	if( initial ) 
 	{
-		OnFwd(LEFT_MOTOR, MID_SPEED);
-		OnFwd(RIGHT_MOTOR, MID_SPEED);
-	} 
+    OnFwd( RIGHT_MOTOR, OBSTACLE_SPEED_L );
+    OnFwd( LEFT_MOTOR, OBSTACLE_SPEED_R );
+	}
 
 	return Both_Slow_Speed;
 }
 
-State St_Full_Speed_Ri_Mid_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+State St_Full_Speed_Ri_Mid_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
+
+  if( checkObstacle(vSonic) )
+  {
+    return Obstacle_Avoidance;
+  }
+  
 	if( !checkThreshold(vMiddle, THRESHOLD_MIDDLE) || checkThreshold(vRight, THRESHOLD_RIGHT) ) //MITTE WEISS oder rechts schwarz
 	{
 		return Initial;
@@ -123,8 +157,13 @@ State St_Full_Speed_Ri_Mid_Speed_Le( const int vLeft, const int vMiddle, const i
 	return Full_Speed_Ri_Mid_Speed_Le;
 }
 
-State St_Mid_Speed_Ri_Full_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+State St_Mid_Speed_Ri_Full_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
+  if( checkObstacle(vSonic) )
+  {
+    return Obstacle_Avoidance;
+  }
+
 	if( !checkThreshold(vMiddle, THRESHOLD_MIDDLE) || checkThreshold(vLeft, THRESHOLD_LEFT) ) //MITTE WEISS oder links schwarz
 	{
 		return Initial;
@@ -145,8 +184,34 @@ State St_Mid_Speed_Ri_Full_Speed_Le( const int vLeft, const int vMiddle, const i
 
 }
 
-State St_Mid_Speed_Ri_Low_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const bool initial )
+State St_Mid_Speed_Ri_Low_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
+  if( checkObstacle(vSonic) )
+  {
+    return Obstacle_Avoidance;
+  }
+
+	if( checkThreshold(vMiddle, THRESHOLD_MIDDLE)  ) //MITTE WEISS oder rechts schwarz
+	{
+		return Both_Full_Speed;
+	}
+	
+	if( initial ) 
+	{
+		OnFwd(RIGHT_MOTOR, FULL_SPEED);
+		OnFwd(LEFT_MOTOR, MID_SPEED);
+	} 
+
+	return Mid_Speed_Ri_Low_Speed_Le;
+}
+
+State St_Low_Speed_Ri_Mid_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
+{
+  if( checkObstacle(vSonic) )
+  {
+    return Obstacle_Avoidance;
+  }
+
 	if( checkThreshold(vMiddle, THRESHOLD_MIDDLE)  ) //MITTE WEISS oder rechts schwarz
 	{
 		return Both_Full_Speed;
@@ -155,30 +220,47 @@ State St_Mid_Speed_Ri_Low_Speed_Le( const int vLeft, const int vMiddle, const in
 	if( initial ) 
 	{
 		OnFwd(RIGHT_MOTOR, MID_SPEED);
-		OnFwd(LEFT_MOTOR, LOW_SPEED);
-	} 
-
-	return Mid_Speed_Ri_Low_Speed_Le;
-}
-
-State St_Low_Speed_Ri_Mid_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const bool initial )
-{
-	if( checkThreshold(vMiddle, THRESHOLD_MIDDLE)  ) //MITTE WEISS oder rechts schwarz
-	{
-		return Both_Full_Speed;
-	}
-	
-	if( initial ) 
-	{
-		OnFwd(RIGHT_MOTOR, LOW_SPEED);
-		OnFwd(LEFT_MOTOR, MID_SPEED);
+		OnFwd(LEFT_MOTOR, FULL_SPEED);
 	} 
 
 	return Low_Speed_Ri_Mid_Speed_Le;
 }
 
+State St_Obstacle_Avoidance( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
+{
 
-State StateDispatch(const int vLeft, const int vRight, const int vMiddle, const State currentState, const State lastState)
+      int measureNew;
+
+
+      if( !checkObstacle(vSonic) )
+      {
+       return Initial;
+      }
+
+      OnFwd( RIGHT_MOTOR, 0);
+      OnFwd( LEFT_MOTOR, 0);
+      
+      Wait(500);
+
+      OnRev( RIGHT_MOTOR, FULL_SPEED );
+      OnFwd( LEFT_MOTOR, FULL_SPEED );
+
+      Wait(200);
+      
+      OnFwd( RIGHT_MOTOR, OBSTACLE_SPEED_R );
+      OnFwd( LEFT_MOTOR, OBSTACLE_SPEED_L );
+      
+      do
+      {
+        measureNew = SensorRaw( MIDDLE_SENSOR );
+
+      } while( !checkThreshold( measureNew, THRESHOLD_MIDDLE) );
+
+      return Obstacle_Avoidance;
+}
+
+
+State StateDispatch(const int vLeft, const int vRight, const int vMiddle, const int vSonic, const State currentState, const State lastState)
 {
 
 	const bool initial = lastState != currentState;
@@ -187,25 +269,28 @@ State StateDispatch(const int vLeft, const int vRight, const int vMiddle, const 
 	{
 
 		case Initial:
-			return St_Initial(vLeft, vMiddle, vRight, initial);
+			return St_Initial(vLeft, vMiddle, vRight, vSonic, initial);
 
 	    case Both_Full_Speed:
-			return St_Both_Full_Speed(vLeft, vMiddle, vRight, initial);
+			return St_Both_Full_Speed(vLeft, vMiddle, vRight, vSonic, initial);
 
 	    case Both_Slow_Speed:
-			return St_Both_Slow_Speed(vLeft, vMiddle, vRight, initial);
+			return St_Both_Slow_Speed(vLeft, vMiddle, vRight, vSonic, initial);
 
 	    case Full_Speed_Ri_Mid_Speed_Le:
-			return St_Full_Speed_Ri_Mid_Speed_Le(vLeft, vMiddle, vRight, initial);
+			return St_Full_Speed_Ri_Mid_Speed_Le(vLeft, vMiddle, vRight, vSonic, initial);
 
 	    case Mid_Speed_Ri_Full_Speed_Le:
-			return St_Mid_Speed_Ri_Full_Speed_Le(vLeft, vMiddle, vRight, initial);
+			return St_Mid_Speed_Ri_Full_Speed_Le(vLeft, vMiddle, vRight, vSonic, initial);
 
 	    case Mid_Speed_Ri_Low_Speed_Le:
-			return St_Mid_Speed_Ri_Low_Speed_Le(vLeft, vMiddle, vRight, initial);
+			return St_Mid_Speed_Ri_Low_Speed_Le(vLeft, vMiddle, vRight, vSonic, initial);
 
 	    case Low_Speed_Ri_Mid_Speed_Le:
-			return St_Low_Speed_Ri_Mid_Speed_Le(vLeft, vMiddle, vRight, initial);
+			return St_Low_Speed_Ri_Mid_Speed_Le(vLeft, vMiddle, vRight, vSonic, initial);
+			
+			case Obstacle_Avoidance:
+			return St_Obstacle_Avoidance(vLeft, vMiddle, vRight, vSonic, initial);
 
 	}
 	 
@@ -229,22 +314,31 @@ sub StateMachine(State initialState)
 		const int vLeft = SensorRaw(LEFT_SENSOR);
 		const int vRight = SensorRaw(RIGHT_SENSOR);
 		const int vMiddle = SensorRaw(MIDDLE_SENSOR);
+		
+		const int vSonic = SensorUS(SONIC_SENSOR);
+		
+    ClearScreen();
 
     strTmp = NumToStr(vLeft) + " " + NumToStr(vMiddle) + " " + NumToStr(vRight);
     TextOut(0, LCD_LINE1, strTmp);
     
+    strTmp = NumToStr(vSonic);
+    TextOut(0, LCD_LINE2, strTmp);
+
     strTmp = NumToStr(currentState);
     TextOut(0, LCD_LINE3, strTmp);
 
-		State newState = StateDispatch( vLeft, vRight, vMiddle, currentState, lastState );
+		State newState = StateDispatch( vLeft, vRight, vMiddle, vSonic, currentState, lastState );
 
 		lastState = currentState;
 		currentState = newState;
+		
+		
+		
+		//PlayTone( 440 + (currentState * 4400) / 70, 100 );
 
-    if(currentState != lastState)
-    {
-     while( UIButton() != UI_BUTTON_ENTER ) { }
-    }
+
+
 
 	}
 
@@ -260,7 +354,9 @@ sub Setup()
 	SetSensorMode(RIGHT_SENSOR, IN_MODE_RAW);
 	SetSensorType(MIDDLE_SENSOR, IN_TYPE_LIGHT_ACTIVE);
 	SetSensorMode(MIDDLE_SENSOR, IN_MODE_RAW);
-
+	
+	SetSensorUltrasonic( SONIC_SENSOR );
+	
 	return;
 }
 
