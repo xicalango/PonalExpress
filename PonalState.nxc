@@ -23,21 +23,24 @@
 
 #define FULL_SPEED 100
 #define MID_SPEED 50
+#define LOW_SPEED 40
 
 #define OBSTACLE_SPEED_L 50
 #define OBSTACLE_SPEED_R 70
 
+#define MUTE
+
 enum State
 {
- 	   None = 0,
-     Initial = 1,
-     Both_Full_Speed = 2,
-     Both_Slow_Speed = 3,
-     Full_Speed_Ri_Mid_Speed_Le = 4,
-     Mid_Speed_Ri_Full_Speed_Le = 5,
-     Mid_Speed_Ri_Low_Speed_Le = 6,
-     Low_Speed_Ri_Mid_Speed_Le = 7,
-     Obstacle_Avoidance = 8
+ 	 None = 0,
+     INITIAL = 1,
+     DRIVE_FWD = 2,
+     SEARCH_LINE = 3,
+     CORRECT_TO_LEFT = 4,
+     CORRECT_TO_RIGHT = 5,
+     EMERG_RIGHT = 6,
+     EMERG_LEFT = 7,
+     AVOID_OBSTACLE = 8
 };
 
 int Tones[] = { 0, 261, 311, 329, 349, 369, 391, 466, 523 };
@@ -53,41 +56,41 @@ bool checkObstacle( const int value )
   return value < THRESHOLD_SONIC;
 }
 
-State St_Initial( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
+State St_INITIAL( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
 
 	if(checkThreshold(vMiddle, THRESHOLD_MIDDLE)) 
 	{
-		return Both_Full_Speed;
+		return DRIVE_FWD;
 	}
 	else
 	{
-		return Both_Slow_Speed;
+		return SEARCH_LINE;
 	}
 
 }
 
-State St_Both_Full_Speed( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
+State St_DRIVE_FWD( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
 
   if( checkObstacle(vSonic) )
   {
-    return Obstacle_Avoidance;
+    return AVOID_OBSTACLE;
   }
 
 	if( !checkThreshold(vMiddle, THRESHOLD_MIDDLE) ) //MITTE WEISS
 	{
-		return Both_Slow_Speed;
+		return SEARCH_LINE;
 	}
 
 	if( checkThreshold(vLeft, THRESHOLD_LEFT) )  //LINKS SCHWARZ
 	{
-		return Full_Speed_Ri_Mid_Speed_Le;
+		return CORRECT_TO_LEFT;
 	}
 	
 	if( checkThreshold(vRight, THRESHOLD_RIGHT) ) //RECHTS SCHWARZ
 	{
-		return Mid_Speed_Ri_Full_Speed_Le;
+		return CORRECT_TO_RIGHT;
 	}
 
 	// nur mitte schwarz
@@ -98,56 +101,56 @@ State St_Both_Full_Speed( const int vLeft, const int vMiddle, const int vRight, 
 		OnFwd(RIGHT_MOTOR, FULL_SPEED);
 	} 
 
-	return Both_Full_Speed;
+	return DRIVE_FWD;
 }
 
-State St_Both_Slow_Speed( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
+State St_SEARCH_LINE( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
   if( checkObstacle(vSonic) )
   {
-    return Obstacle_Avoidance;
+    return AVOID_OBSTACLE;
   }
 
 	if( checkThreshold(vMiddle, THRESHOLD_MIDDLE) ) //MITTE Schwarz
 	{
-		return Both_Full_Speed;
+		return DRIVE_FWD;
 	}
 
 	if( checkThreshold(vLeft, THRESHOLD_LEFT) )  //LINKS SCHWARZ
 	{
-		return Mid_Speed_Ri_Low_Speed_Le;
+		return EMERG_RIGHT;
 	}
 	
 	if( checkThreshold(vRight, THRESHOLD_RIGHT) ) //RECHTS SCHWARZ
 	{
-		return Low_Speed_Ri_Mid_Speed_Le;
+		return EMERG_LEFT;
 	}
 
 	if( initial ) 
 	{
-    OnFwd( RIGHT_MOTOR, OBSTACLE_SPEED_L );
-    OnFwd( LEFT_MOTOR, OBSTACLE_SPEED_R );
+    OnFwd( RIGHT_MOTOR, FULL_SPEED );
+    OnFwd( LEFT_MOTOR, LOW_SPEED );
 	}
 
-	return Both_Slow_Speed;
+	return SEARCH_LINE;
 }
 
-State St_Full_Speed_Ri_Mid_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
+State St_CORRECT_TO_LEFT( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
 
   if( checkObstacle(vSonic) )
   {
-    return Obstacle_Avoidance;
+    return AVOID_OBSTACLE;
   }
   
 	if( !checkThreshold(vMiddle, THRESHOLD_MIDDLE) || checkThreshold(vRight, THRESHOLD_RIGHT) ) //MITTE WEISS oder rechts schwarz
 	{
-		return Initial;
+		return INITIAL;
 	}
 
 	if( !checkThreshold(vLeft, THRESHOLD_LEFT) )  //LINKS SCHWARZ
 	{
-		return Both_Full_Speed;
+		return DRIVE_FWD;
 	}
 	
 	if( initial ) 
@@ -156,24 +159,24 @@ State St_Full_Speed_Ri_Mid_Speed_Le( const int vLeft, const int vMiddle, const i
 		OnFwd(LEFT_MOTOR, MID_SPEED);
 	} 
 
-	return Full_Speed_Ri_Mid_Speed_Le;
+	return CORRECT_TO_LEFT;
 }
 
-State St_Mid_Speed_Ri_Full_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
+State St_CORRECT_TO_RIGHT( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
   if( checkObstacle(vSonic) )
   {
-    return Obstacle_Avoidance;
+    return AVOID_OBSTACLE;
   }
 
 	if( !checkThreshold(vMiddle, THRESHOLD_MIDDLE) || checkThreshold(vLeft, THRESHOLD_LEFT) ) //MITTE WEISS oder links schwarz
 	{
-		return Initial;
+		return INITIAL;
 	}
 
 	if( !checkThreshold(vRight, THRESHOLD_RIGHT) )  //RECHTS SCHWARZ
 	{
-		return Both_Full_Speed;
+		return DRIVE_FWD;
 	}
 	
 	if( initial ) 
@@ -182,53 +185,53 @@ State St_Mid_Speed_Ri_Full_Speed_Le( const int vLeft, const int vMiddle, const i
 		OnFwd(LEFT_MOTOR, FULL_SPEED);
 	} 
 
-	return Mid_Speed_Ri_Full_Speed_Le;
+	return CORRECT_TO_RIGHT;
 
 }
 
-State St_Mid_Speed_Ri_Low_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
+State St_EMERG_RIGHT( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
   if( checkObstacle(vSonic) )
   {
-    return Obstacle_Avoidance;
+    return AVOID_OBSTACLE;
   }
 
 	if( checkThreshold(vMiddle, THRESHOLD_MIDDLE)  ) //MITTE WEISS oder rechts schwarz
 	{
-		return Both_Full_Speed;
+		return DRIVE_FWD;
 	}
 	
 	if( initial ) 
 	{
 		OnFwd(RIGHT_MOTOR, FULL_SPEED);
-		OnFwd(LEFT_MOTOR, MID_SPEED);
+		OnFwd(LEFT_MOTOR, LOW_SPEED);
 	} 
 
-	return Mid_Speed_Ri_Low_Speed_Le;
+	return EMERG_RIGHT;
 }
 
-State St_Low_Speed_Ri_Mid_Speed_Le( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
+State St_EMERG_LEFT( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
   if( checkObstacle(vSonic) )
   {
-    return Obstacle_Avoidance;
+    return AVOID_OBSTACLE;
   }
 
 	if( checkThreshold(vMiddle, THRESHOLD_MIDDLE)  ) //MITTE WEISS oder rechts schwarz
 	{
-		return Both_Full_Speed;
+		return DRIVE_FWD;
 	}
 	
 	if( initial ) 
 	{
-		OnFwd(RIGHT_MOTOR, MID_SPEED);
+		OnFwd(RIGHT_MOTOR, LOW_SPEED);
 		OnFwd(LEFT_MOTOR, FULL_SPEED);
 	} 
 
-	return Low_Speed_Ri_Mid_Speed_Le;
+	return EMERG_LEFT;
 }
 
-State St_Obstacle_Avoidance( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
+State St_AVOID_OBSTACLE( const int vLeft, const int vMiddle, const int vRight, const int vSonic, const bool initial )
 {
 
       int measureNew;
@@ -236,7 +239,7 @@ State St_Obstacle_Avoidance( const int vLeft, const int vMiddle, const int vRigh
 
       if( !checkObstacle(vSonic) )
       {
-       return Initial;
+       return INITIAL;
       }
 
       OnFwd( RIGHT_MOTOR, 0);
@@ -258,7 +261,7 @@ State St_Obstacle_Avoidance( const int vLeft, const int vMiddle, const int vRigh
 
       } while( !checkThreshold( measureNew, THRESHOLD_MIDDLE) );
 
-      return Obstacle_Avoidance;
+      return AVOID_OBSTACLE;
 }
 
 
@@ -270,29 +273,29 @@ State StateDispatch(const int vLeft, const int vRight, const int vMiddle, const 
 	switch(currentState)
 	{
 
-		case Initial:
-			return St_Initial(vLeft, vMiddle, vRight, vSonic, initial);
+		case INITIAL:
+			return St_INITIAL(vLeft, vMiddle, vRight, vSonic, initial);
 
-	    case Both_Full_Speed:
-			return St_Both_Full_Speed(vLeft, vMiddle, vRight, vSonic, initial);
+	    case DRIVE_FWD:
+			return St_DRIVE_FWD(vLeft, vMiddle, vRight, vSonic, initial);
 
-	    case Both_Slow_Speed:
-			return St_Both_Slow_Speed(vLeft, vMiddle, vRight, vSonic, initial);
+	    case SEARCH_LINE:
+			return St_SEARCH_LINE(vLeft, vMiddle, vRight, vSonic, initial);
 
-	    case Full_Speed_Ri_Mid_Speed_Le:
-			return St_Full_Speed_Ri_Mid_Speed_Le(vLeft, vMiddle, vRight, vSonic, initial);
+	    case CORRECT_TO_LEFT:
+			return St_CORRECT_TO_LEFT(vLeft, vMiddle, vRight, vSonic, initial);
 
-	    case Mid_Speed_Ri_Full_Speed_Le:
-			return St_Mid_Speed_Ri_Full_Speed_Le(vLeft, vMiddle, vRight, vSonic, initial);
+	    case CORRECT_TO_RIGHT:
+			return St_CORRECT_TO_RIGHT(vLeft, vMiddle, vRight, vSonic, initial);
 
-	    case Mid_Speed_Ri_Low_Speed_Le:
-			return St_Mid_Speed_Ri_Low_Speed_Le(vLeft, vMiddle, vRight, vSonic, initial);
+	    case EMERG_RIGHT:
+			return St_EMERG_RIGHT(vLeft, vMiddle, vRight, vSonic, initial);
 
-	    case Low_Speed_Ri_Mid_Speed_Le:
-			return St_Low_Speed_Ri_Mid_Speed_Le(vLeft, vMiddle, vRight, vSonic, initial);
+	    case EMERG_LEFT:
+			return St_EMERG_LEFT(vLeft, vMiddle, vRight, vSonic, initial);
 			
-			case Obstacle_Avoidance:
-			return St_Obstacle_Avoidance(vLeft, vMiddle, vRight, vSonic, initial);
+		case AVOID_OBSTACLE:
+			return St_AVOID_OBSTACLE(vLeft, vMiddle, vRight, vSonic, initial);
 
 	}
 	 
@@ -336,8 +339,9 @@ sub StateMachine(State initialState)
 		currentState = newState;
 		
 		
-		
+#ifndef MUTE
 		PlayTone( Tones[currentState] * 2, 50 );
+#endif //MUTE
 
 
 
@@ -366,7 +370,7 @@ task main()
 {
 	Setup();
 
-	StateMachine(Initial);
+	StateMachine(INITIAL);
 }
 
 
