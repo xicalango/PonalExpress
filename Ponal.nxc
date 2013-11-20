@@ -7,13 +7,20 @@
 #define RIGHT_MOTOR OUT_A
 #define AUX_MOTOR OUT_B
 
+/*
+const int minLeft = 500;
+const int minRight = 500;
+
+const int maxLeft = 600;
+const int maxRight = 600;
+*/
+
+
 const int minLeft = 360;
 const int minRight = 325;
-const int minMid = 322;
-
-const int maxLeft = 430;
+const int maxLeft = 530;
 const int maxRight = 565;
-const int maxMid = 590;
+
 
 int normalize( const int value, const int min, const int max, const int factor = 100 )
 {
@@ -50,7 +57,7 @@ sub FollowLine()
 	int speedLeft;	
 	int speedRight;
 
-	const int minSpeed = 75;
+	const int minSpeed = 25;
 	const int maxSpeed = 100;
 	const int diffSpeed = maxSpeed - minSpeed;
 
@@ -61,8 +68,8 @@ sub FollowLine()
     vLeft = SensorRaw(LEFT_SENSOR);
     vRight = SensorRaw(RIGHT_SENSOR);
 
-		nLeft = fixPointFactor + normalize( vLeft, minLeft, maxLeft, -fixPointFactor );
-		nRight = fixPointFactor + normalize( vRight, minRight, maxRight, -fixPointFactor );
+		nLeft = normalize( vLeft, minLeft, maxLeft, fixPointFactor );
+		nRight = normalize( vRight, minRight, maxRight, fixPointFactor );
 
 		speedLeft = (nLeft * diffSpeed)/fixPointFactor + minSpeed;
 		speedRight = (nRight * diffSpeed)/fixPointFactor + minSpeed;
@@ -82,7 +89,7 @@ sub FollowLine()
 	    strTmp = NumToStr(speedLeft) + " " + NumToStr(speedRight);
 	    TextOut(0, LCD_LINE3, strTmp);
 	    
-      strTmp = "  " + NumToStr(nLeft) + " " + NumToStr(nMiddle) + " " + NumToStr(nRight);
+      strTmp = "  " + NumToStr(nLeft) + " " + NumToStr(nRight);
       TextOut(0, LCD_LINE4, strTmp);
 
 
