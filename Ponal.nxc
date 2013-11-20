@@ -7,20 +7,13 @@
 #define RIGHT_MOTOR OUT_A
 #define AUX_MOTOR OUT_B
 
-/*
-const int minLeft = 500;
-const int minRight = 500;
-
-const int maxLeft = 600;
-const int maxRight = 600;
-*/
-
-
 const int minLeft = 360;
 const int minRight = 325;
-const int maxLeft = 530;
-const int maxRight = 565;
+const int minMid = 322;
 
+const int maxLeft = 430;
+const int maxRight = 565;
+const int maxMid = 590;
 
 int normalize( const int value, const int min, const int max, const int factor = 100 )
 {
@@ -46,9 +39,11 @@ sub FollowLine()
 
 	int vLeft;
 	int vRight;
+	int vMiddle;
 	
 	int nLeft;
 	int nRight;
+	int nMiddle;
 
 	int istValue;
 
@@ -56,40 +51,50 @@ sub FollowLine()
 
 	int speedLeft;	
 	int speedRight;
-
-	const int minSpeed = 25;
-	const int maxSpeed = 100;
+	
+	int kumulative = 0;
+	
+	int regelValue;
+	
+	const int minSpeed = -50;
+	const int maxSpeed = 175;
 	const int diffSpeed = maxSpeed - minSpeed;
-
-	const int fixPointFactor = 500;
 
 	while(true)
 	{
     vLeft = SensorRaw(LEFT_SENSOR);
     vRight = SensorRaw(RIGHT_SENSOR);
+    vMiddle = SensorRaw(MIDDLE_SENSOR);
 
-		nLeft = normalize( vLeft, minLeft, maxLeft, fixPointFactor );
-		nRight = normalize( vRight, minRight, maxRight, fixPointFactor );
+		nLeft = normalize( vLeft, minLeft, maxLeft, 500 );
+		nRight = normalize( vRight, minRight, maxRight, -500 );
+		nMiddle = normalize( vMiddle, minMid, maxMid );
 
-		speedLeft = (nLeft * diffSpeed)/fixPointFactor + minSpeed;
-		speedRight = (nRight * diffSpeed)/fixPointFactor + minSpeed;
+		istValue = nLeft + nRight;
 		
+		kumulative = (kumulative + istValue)/2;
+		
+		regelValue = ((istValue*3)/4) + (kumulative/4);
+		
+		speedLeft = (((-regelValue + 500)*diffSpeed)/1000) + minSpeed;
+		speedRight = (((regelValue + 500)*diffSpeed)/1000) + minSpeed;
+
 		OnFwd(LEFT_MOTOR, speedLeft);
 		OnFwd(RIGHT_MOTOR, speedRight);
 
     ClearScreen();
 
-      strTmp = NumToStr(vLeft) + " " + NumToStr(vRight);
+      strTmp = NumToStr(vLeft) + " " + NumToStr(vMiddle) + " " + NumToStr(vRight);
 
 	    TextOut(0, LCD_LINE1, strTmp);
 	    
-	    strTmp = NumToStr(istValue);
+	    strTmp = NumToStr(istValue) + " " + NumToStr(kumulative) + " " + NumToStr(regelValue);
 	    TextOut(0, LCD_LINE2, strTmp);
 
 	    strTmp = NumToStr(speedLeft) + " " + NumToStr(speedRight);
 	    TextOut(0, LCD_LINE3, strTmp);
 	    
-      strTmp = "  " + NumToStr(nLeft) + " " + NumToStr(nRight);
+      strTmp = "  " + NumToStr(nLeft) + " " + NumToStr(nMiddle) + " " + NumToStr(nRight);
       TextOut(0, LCD_LINE4, strTmp);
 
 
